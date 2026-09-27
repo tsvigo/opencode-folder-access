@@ -175,14 +175,17 @@ def main() -> int:
 
     # Вставляем новые записи перед закрывающей скобкой блока.
     # Обеспечиваем запятую у предыдущей последней записи.
-    before = text[:end_brace]
+    before = text[:end_brace].rstrip()
     after = text[end_brace:]
     # Найти последнюю непустую строку в before внутри блока
     lines = before.split("\n")
-    # Идём с конца: первая строка с '"' — последняя запись; добавить запятую если нет
+    # Идём с конца: пропускаем пустые строки, первая строка с '"' — последняя
+    # запись; добавить запятую если её нет. Строка с '{' — пустой блок.
     for idx in range(len(lines) - 1, -1, -1):
-        stripped = lines[idx].rstrip()
-        if not stripped or stripped.endswith("{"):
+        stripped = lines[idx].strip()
+        if not stripped:
+            continue
+        if stripped.endswith("{"):
             break
         if '"' in stripped:
             if not stripped.endswith(","):
