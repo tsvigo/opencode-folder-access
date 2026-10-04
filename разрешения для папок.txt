@@ -1,1 +1,3 @@
 /media/v/2TB-VNESHNIY/Downloads_real
+/usr/share/plasma/plasmoids/org.kde.plasma.digitalclock/contents/config
+usr/share/plasma/plasmoids/org.kde.plasma.digitalclock/contents/ui
