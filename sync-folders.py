@@ -6,6 +6,13 @@
 permission.external_directory файла opencode.jsonc, если записи ещё нет.
 Дубли (внутри txt и уже имеющиеся в конфиге) пропускаются.
 
+Форматы строк в txt:
+  - голый путь:        /media/v/2TB-VNESHNIY/Downloads_real
+  - путь без слэша:    usr/share/foo        -> /usr/share/foo
+  - окно разрешений:   '←Access external directory /usr/share/foo'
+  - bullet Patterns:   '- /usr/share/foo/*'
+Мусор ('☐ Permission required', 'Patterns', '→Read .env') игнорируется.
+
 Запуск вручную:
     python3 sync-folders.py
 Через cron (раз в сутки), пример:
