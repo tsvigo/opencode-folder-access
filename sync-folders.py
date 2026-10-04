@@ -28,22 +28,58 @@ def log(msg: str) -> None:
     print(f"[{ts}] {msg}", flush=True)
 
 
-def normalize_pattern(raw: str) -> str | None:
-    s = raw.strip().strip('"').strip("'").strip()
+def extract_path(raw: str) -> str | None:
+    """Извлекает папку из строки любого из поддерживаемых форматов.
+
+    Понимает:
+      - голый путь: /media/v/2TB-VNESHNIY/Downloads_real
+      - путь без ведущего слэша: usr/share/foo  -> /usr/share/foo
+      - строку из окна разрешений OpenCode:
+          '←Access external directory /usr/share/foo'
+      - bullet-строку из блока Patterns:
+          '- /usr/share/foo/*'
+    Мусорные строки ('☐ Permission required', 'Patterns', '→Read .env')
+    возвращают None.
+    """
+    s = raw.strip()
     if not s:
         return None
-    # Пропуск комментариев
     if s.startswith("#") or s.startswith(";") or s.startswith("//"):
         return None
-    # Убрать trailing-слэши (но сохранить корень "/" и "~")
-    while len(s) > 1 and s.endswith("/") and not s.endswith("/**"):
-        s = s[:-1]
-    if s.endswith("/**"):
-        return s
-    # "~" -> "~/**", "/foo" -> "/foo/**", "/foo/*" -> "/foo/**"
-    if s.endswith("/*"):
-        s = s[:-2]
-    return s + "/**"
+    cand = None
+    m = re.search(r"Access external directory\s+(.+)$", s)
+    if m:
+        cand = m.group(1)
+    elif s.startswith("-") or s.startswith("•"):
+        cand = s[1:]
+    else:
+        cand = s
+    cand = cand.strip().strip('"').strip("'").strip()
+    if not cand:
+        return None
+    if cand.startswith("/") or cand.startswith("~"):
+        return cand
+    # Путь без ведущего слэша: только если без пробелов и со слэшем внутри
+    # (мусорные строки вида '☐ Permission required' сюда не попадают)
+    if " " not in cand and "/" in cand and not cand.startswith(("☐", "☑", "←", "→")):
+        return "/" + cand
+    return None
+
+
+def normalize_pattern(raw: str) -> str | None:
+    path = extract_path(raw)
+    if path is None:
+        return None
+    # Убрать хвосты: /**, /*, одиночный /
+    if path.endswith("/**"):
+        path = path[:-3]
+    elif path.endswith("/*"):
+        path = path[:-2]
+    while len(path) > 1 and path.endswith("/"):
+        path = path[:-1]
+    if path in ("/", "~", ""):
+        return None
+    return path + "/**"
 
 
 def load_wanted_patterns() -> list[str]:
