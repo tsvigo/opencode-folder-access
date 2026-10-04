@@ -13,6 +13,10 @@ permission.external_directory файла opencode.jsonc, если записи �
   - bullet Patterns:   '- /usr/share/foo/*'
 Мусор ('☐ Permission required', 'Patterns', '→Read .env') игнорируется.
 
+Перед записью проверяется: путь существует и является папкой
+(с раскрытием '~'). Несуществующие пути и файлы пропускаются с пометкой
+в логе.
+
 Запуск вручную:
     python3 sync-folders.py
 Через cron (раз в сутки), пример:
@@ -199,15 +203,24 @@ def main() -> int:
 
     block_text = text[start_brace : end_brace + 1]
     missing: list[str] = []
+    dup_count = 0
+    skip_count = 0
     for pat in wanted:
         # Точное совпадение ключа "..." внутри блока = дубль
         if f'"{pat}"' in block_text:
             log(f"Уже есть (дубль, пропуск): {pat}")
-        else:
-            missing.append(pat)
+            dup_count += 1
+            continue
+        # Проверка перед записью: путь должен существовать и быть папкой
+        folder = pat[:-3] if pat.endswith("/**") else pat
+        if not Path(folder).expanduser().is_dir():
+            log(f"Пропущено (не папка или не существует): {pat}")
+            skip_count += 1
+            continue
+        missing.append(pat)
 
     if not missing:
-        log("Все папки уже разрешены. Изменений нет.")
+        log("Нет новых существующих папок для добавления. Изменений нет.")
         return 0
 
     # Бэкап конфига перед изменением
@@ -251,7 +264,10 @@ def main() -> int:
     CONFIG_FILE.write_text(new_text, encoding="utf-8")
     for pat in missing:
         log(f"Добавлено: {pat}")
-    log(f"Итого добавлено: {len(missing)}, пропущено дублей: {len(wanted) - len(missing)}")
+    log(
+        f"Итого добавлено: {len(missing)}, дублей: {dup_count}, "
+        f"пропущено (не папка): {skip_count}"
+    )
     log("=== Готово ===")
     return 0
 
